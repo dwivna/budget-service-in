@@ -12,5 +12,5 @@ import lombok.Setter;
 @NoArgsConstructor
 @Setter
 public class Investments {
-    private Map<String,Double> contributions;
+    private Map<String, Double> contributions;
 }

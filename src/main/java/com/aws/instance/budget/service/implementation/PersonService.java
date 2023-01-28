@@ -1,70 +1,90 @@
 package com.aws.instance.budget.service.implementation;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.aws.instance.budget.enums.Months;
+import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
+import com.aws.instance.budget.entity.PersonEntity;
+import com.aws.instance.budget.exception.NoPersonException;
+import com.aws.instance.budget.repository.PersonRepository;
 import com.aws.instance.budget.service.IPersonService;
-import com.aws.instance.budget.vo.Investments;
-import com.aws.instance.budget.vo.MonthlyRecord;
 import com.aws.instance.budget.vo.Person;
-import com.aws.instance.budget.vo.Salary;
-import com.aws.instance.budget.vo.SalaryDeductions;
-import com.aws.instance.budget.vo.FinancialYear;
+
+import lombok.extern.slf4j.Slf4j;
 
 @Service
-public class PersonService implements IPersonService{
+@Slf4j
+public class PersonService implements IPersonService {
+
+    @Autowired
+    private PersonRepository personRepository;
 
     @Override
-    public Person getPerson(Integer id) {
-        //Person
-        Person person = new Person();
-        person.setName("Abhinav Dwivedi");
-
-        MonthlyRecord monthlyRecord = new MonthlyRecord();
-    
-        //Salary
-        Salary salary = new Salary();
-        salary.setBasicPay(75000.00);
-        salary.setHouseRentAllowance(37500.00);
-        salary.setSpecialAllowance(119833.33);
-
-        monthlyRecord.setSalary(salary);
-        //Salary Deductions
-        SalaryDeductions deductions = new SalaryDeductions();
-        deductions.setProfessionalTax(200.00);
-        deductions.setProvidendFund(9000.00);
-        deductions.setVirtualProvidendFund(5250.00);
-        deductions.setNationalPensionScheme(7500.00);
-        
-        monthlyRecord.setDeductions(deductions);
-
-        //Schemes
-        Map<String,Double> schemes = new HashMap<>();
-        schemes.put("nationalPensionSchemeTier2", 5000.00);
-        schemes.put("lifeInsuranceCorporation1", 10911.00);
-        schemes.put("publicProvidendFund", 10000.00);
-        schemes.put("sukanyaSamridhiAccount", 12500.00);
-        schemes.put("termInsurance", 2515.00);
-        Investments investments = new Investments(schemes);
-    
-        monthlyRecord.setInvestments(investments);
-        monthlyRecord.setMonth(Months.DEC.getValue());
-        FinancialYear financialYear = new FinancialYear();
-        List<MonthlyRecord> monthlyRecords = new ArrayList<>();
-        monthlyRecords.add(monthlyRecord);
-        
-        financialYear.setMonthlyRecords(monthlyRecords);
-        financialYear.setFinancialYear("2022-23");
-
-        List<FinancialYear> financialYears = new ArrayList<>();
-        financialYears.add(financialYear);
-        person.setFinancialYears(financialYears);
-        return person;
+    public Person getPerson(String id) {
+        try {
+            Optional<PersonEntity> entityOptional = personRepository.findById(id);
+            if (entityOptional.isPresent()) {
+                PersonEntity entity = entityOptional.get();
+                Person person = new Person();
+                return person.apply(entity);
+            } else {
+                throw new NoPersonException("No person exist having id " + id);
+            }
+        } catch (Exception ae) {
+            log.error("Exception while fetching data...", ae);
+            throw new NoPersonException("No person exist having id " + id);
+        }
     }
-    
+
+    @Override
+    public Person addPerson(Person person) {
+        PersonEntity personEntity = new PersonEntity();
+        personEntity.setFirstName(person.getFirstName());
+        personEntity.setMiddleName(person.getMiddleName());
+        personEntity.setLastName(person.getLastName());
+        personEntity.setFinancialYears(person.getFinancialYears());
+        return person.apply(personRepository.save(personEntity));
+    }
+
+    @Override
+    public Person updatePerson(Person person, String id) {
+        Person existPerson = getPerson(id);
+        PersonEntity personEntity = new PersonEntity();
+        personEntity.setId(existPerson.getId());
+        personEntity.setFirstName(existPerson.getFirstName());
+        personEntity.setMiddleName(existPerson.getMiddleName());
+        personEntity.setLastName(existPerson.getLastName());
+        personEntity.setFinancialYears(person.getFinancialYears());
+        return person.apply(personRepository.save(personEntity));
+    }
+
+    @Override
+    public void deletePerson(String id) {
+        try {
+            personRepository.deleteById(id);
+        } catch (AmazonDynamoDBException ae) {
+            log.error("Exception while deleting data...", ae);
+            throw new NoPersonException("No person exist having id " + id);
+        }
+    }
+
+    @Override
+    public List<Person> getPersons() {
+        Iterable<PersonEntity> personIterable = personRepository.findAll();
+        List<PersonEntity> personEntities = new ArrayList<>();
+        personIterable.forEach(personEntities::add);
+        if(personEntities.isEmpty()) {
+            throw new NoPersonException("No Data Found");
+        }
+        return personEntities.stream().map(entity -> {
+            Person person = new Person();
+            return person.apply(entity);
+        }).collect(Collectors.toList());
+    }
+
 }

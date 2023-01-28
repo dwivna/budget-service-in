@@ -1,5 +1,7 @@
 package com.aws.instance.budget.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,24 +21,30 @@ public class PersonController {
 
     @Autowired
     private IPersonService personService;
-    
+
     @GetMapping(path = "/{id}")
-    public Person getPerson(@PathVariable Integer id){
+    public Person getPerson(@PathVariable String id) {
         return personService.getPerson(id);
     }
 
+    @GetMapping
+    public List<Person> getPersons() {
+        return personService.getPersons();
+    }
+
     @PostMapping
-    public Person addPerson(@RequestBody Person person){
-        return person;
+    public Person addPerson(@RequestBody Person person) {
+        return personService.addPerson(person);
     }
 
     @PutMapping(path = "/{id}")
-    public Person updatePerson(@RequestBody Person person, @PathVariable Integer id){
-        return person;
+    public Person updatePerson(@RequestBody Person person, @PathVariable String id) {
+        return personService.updatePerson(person, id);
     }
 
     @DeleteMapping(path = "/{id}")
-    public String deletePerson(@PathVariable Integer id){
-        return "Deleted " + id + " Successfully.";
+    public String deletePerson(@PathVariable String id) {
+        personService.deletePerson(id);
+        return "Deleted person having ID " + id + " successfully.";
     }
 }
